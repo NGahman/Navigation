@@ -7,5 +7,5 @@ class NavigationPath:
 
     def GetInstructions(self):
         return self.instructions
-    def GetPathLength(self)
+    def GetPathLength(self):
         return (self.miles,self.kilometers, self.time)
