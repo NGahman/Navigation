@@ -73,11 +73,21 @@ class Graph:
         NodeValue.append(Edge)
         self.graph[Node] = NodeValue
         return True
+    def RemoveEdge(self,Node,Edge):
+        self.graph[Node].remove(Edge)
+    def RemoveNode(self,Node):
+        del self.graph[Node]
+        for i in self.graph:
+            for j in self.graph[i]:
+                if j.EndNode = Node:
+                    self.graph[i].remove(j)
     def getNode(self,location):
         for i in self.graph:
             if i.coords == location:
                 return i
         return None
+    def ResetGraph(self):
+        self.graph = {}
         
 
 class NavigationGraph:
