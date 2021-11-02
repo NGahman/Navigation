@@ -1,4 +1,4 @@
-import NavigationPath
+from NavigationPath import NavigationPath
 import math
 import copy
 '''graph = {'A': ['B','D'],
@@ -79,7 +79,7 @@ class Graph:
         del self.graph[Node]
         for i in self.graph:
             for j in self.graph[i]:
-                if j.EndNode = Node:
+                if j.EndNode == Node:
                     self.graph[i].remove(j)
     def getNode(self,location):
         for i in self.graph:
@@ -135,13 +135,15 @@ class NavigationGraph:
         self.graph.AddEdge(NodeE,EdgeEB)
         
     def Heuristic(self,Node):
-        return math.sqrt((Node.location[0]-self.Destination[0])**2 + (Node.location[1]-self.Destination[1])**2)
+        return math.sqrt((Node.coords[0]-self.destination[0])**2 + (Node.coords[1]-self.destination[1])**2)
     
     def Navigate(self,paths):
         #TBA: A* should work here with edits for multiple paths?
         #TBA: Find for copy.deepcopy nodes find equivalent node in graph via EqualCoords
         Goal = copy.deepcopy(self.graph.getNode(self.destination))
+        Goal.UpdateOrigin(self.graph.getNode(self.destination))
         Start = copy.deepcopy(self.graph.getNode(self.currentlocation))
+        Start.UpdateOrigin(self.graph.getNode(self.currentlocation))
         OpenList = []
         ClosedList = []
         ParentLists = []
@@ -164,29 +166,34 @@ class NavigationGraph:
                 if counter < paths:
                     while CurrentNode.GetParent() is not None:
                         ParentList.append(CurrentNode)
-                        CurrentNode = CurrentMove.GetParent()
+                        CurrentNode = CurrentNode.GetParent()
                     ParentList.append(CurrentNode)
                     ParentLists.append((CurrentG,ParentList[::-1]))
                     counter += 1
-            print(OpenList)
-            print(CurrentNode)
-            for i in self.graph.graph[CurrentNode]:
+            for i in self.graph.graph[CurrentNode.GetOrigin()]:
                 ListCheck = True
                 E = copy.deepcopy(i.EndNode)
                 E.UpdateParent(CurrentNode)
-                E.UpdateStats(CurrentG+i.weight,Heuristic(i.EndNode))
+                E.UpdateOrigin(i.EndNode)
+                E.UpdateStats(CurrentG+i.weight,self.Heuristic(i.EndNode))
                 for j in ClosedList:
-                    if E.EqualCoordsEqualParents(j):
+                    if E.EqualCoordsEqualParent(j):
                         ListCheck = False
                 if j in OpenList:
-                    if E.EqualCoordsEqualParents(j):
+                    if E.EqualCoordsEqualParent(j):
                         ListCheck = False
                         i.UpdateStats(min(j.g,E.g),j.h)
                 if ListCheck == True:
                     OpenList.append(E)
+                    
+                    #print(CurrentG)
+                    #print(CurrentNode.coords,E.coords,E.g)
         self.paths = []
         for i in ParentLists:
-            Path = NavigationPath(i[1],i[0],i[0],i[0])
+            l = []
+            for j in i[1]:
+                l.append(j.coords)
+            Path = NavigationPath(l,i[0],i[0],i[0])
             self.paths.append(Path)
 
             
@@ -205,9 +212,10 @@ class NavigationGraph:
             instruction = Instructions[0]
             #TBA: Actually work with instructions once API is completed
             
-NG = NavigationGraph([0.0,0.0],[0.0,-1.0])
+NG = NavigationGraph([0.0,2.0],[0.0,-1.0])
 NG.BuildGraph()
-NG.Navigate(1)
+NG.Navigate(3)
 for i in NG.GetPaths():
     print(i.GetInstructions())
+    print(i.GetPathLength())
 
