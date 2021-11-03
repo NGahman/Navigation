@@ -1,30 +1,33 @@
 from NavigationPath import NavigationPath
 import math
 import copy
-'''graph = {'A': ['B','D'],
-         'B': ['C','D'],
-         'C': ['A','E'],
-         'D':['C','E'],
-         'E':['A','B']
-         }'''
-class Node:
+class Node
     def __init__(self,coords):
+        #Coords is the primary distinguishing characteristic of a node, no two nodes should have the same lat/long coords.
+        #F, G and H are used for the A* search algorithm used in Navigate(n).  G is the weight of all edges taken from the start to the current node, and H is the heuristic (distance between node's coords and destination's coords).
+        #Parent is used to trace back the exact path taken from start to goal.
+        #Origin is used to find the node in the given graph, as all Nodes created in Navigate(n) are copies of nodes from the graph to ensure the graph is not effected.  However, these copied nodes are obviously not in the graph, so Origin is needed to find the edges of a given node.
         self.coords = coords
         self.f = 0
         self.g = 0
         self.h = 0
         self.parent = None
         self.origin = None
+        
     def UpdateStats(self,g,h):
         self.g = g
         self.h = h
         self.f = g + h
     def GetStats(self):
         return self.f,self.g,self.h
+
+    #EqualCoords checks if the two nodes have identical coords and if so returns true.
     def EqualCoords(self,other):
         if self.coords == other.coords:
             return True
         return False
+
+    #EqualCoordsEqualParent checks if the two nodes have identical coords and the same parent node and if so returns true.
     def EqualCoordsEqualParent(self,other):
         if self.coords == other.coords and self.parent == other.parent:
             return True
@@ -38,7 +41,8 @@ class Node:
         self.origin = origin
     def GetOrigin(self):
         return self.origin
-    
+
+    #All nodes in a list are sorted using their F value. (there is not a __eq__ because the dictionary requires that to be left blank for a given node to be a viable key)
     def __lt__(self,other):
         if self.f < other.f:
             return True
@@ -49,6 +53,7 @@ class Node:
         return False
     
 class Edge:
+    #Note: weight might have to be changed to miles and mph down the line once BuildGraph is completed, so that NavigationPath's Miles, Kilometers, and Time variables actually mean something
     def __init__(self,EndNode,weight):
         self.EndNode = EndNode
         self.weight = weight
@@ -75,6 +80,7 @@ class Graph:
         return True
     def RemoveEdge(self,Node,Edge):
         self.graph[Node].remove(Edge)
+    #Removes the node from the graph and all edges that point to said node.
     def RemoveNode(self,Node):
         del self.graph[Node]
         for i in self.graph:
@@ -133,34 +139,38 @@ class NavigationGraph:
         self.graph.AddEdge(NodeD,EdgeDE)
         self.graph.AddEdge(NodeE,EdgeEA)
         self.graph.AddEdge(NodeE,EdgeEB)
-        
+
+    #Returns the Elucidian Distance between the Node and NavigationGraph's destination variable.
     def Heuristic(self,Node):
         return math.sqrt((Node.coords[0]-self.destination[0])**2 + (Node.coords[1]-self.destination[1])**2)
     
     def Navigate(self,paths):
-        #TBA: A* should work here with edits for multiple paths?
-        #TBA: Find for copy.deepcopy nodes find equivalent node in graph via EqualCoords
+        #Instantiates goal and start nodes based on the destination and current location, respectively
         Goal = copy.deepcopy(self.graph.getNode(self.destination))
         Goal.UpdateOrigin(self.graph.getNode(self.destination))
         Start = copy.deepcopy(self.graph.getNode(self.currentlocation))
         Start.UpdateOrigin(self.graph.getNode(self.currentlocation))
+        #Sets up the loop
         OpenList = []
         ClosedList = []
         ParentLists = []
         counter = 0
         OpenList.append(Start)
         while counter < paths:
-            
+            #If at any point the OpenList has no Nodes left, the while loop breaks.  This is to make sure if the # of unique paths to the goal are less than the variable paths, Navigate doesn't break
             if len(OpenList) == 0:
                 break
+            #Sorts the list, takes the first Node from the list and deletes said node from OpenList
             OpenList.sort()
             while OpenList[0] == None:
                 del OpenList[0]
             CurrentNode = OpenList[0]
             del OpenList[0]
+            #Adds deleted node to the closed list, and gets the F, G and H values from the current Node
             ClosedList.append(CurrentNode)
             CurrentF,CurrentG,CurrentH = CurrentNode.GetStats()
-            
+
+            #If the given node is Goal and the number of paths already found are less than the given variable paths, the entire path of nodes is added to ParentList, which in turn is added to ParentLists.
             if CurrentNode.EqualCoords(Goal):
                 ParentList = []
                 if counter < paths:
@@ -170,24 +180,32 @@ class NavigationGraph:
                     ParentList.append(CurrentNode)
                     ParentLists.append((CurrentG,ParentList[::-1]))
                     counter += 1
+
+            #For every unique edge CurrentNode has, it checks to see if the Node said edge has is already in OpenList or ClosedList and comes from the same parent/edge.        
             for i in self.graph.graph[CurrentNode.GetOrigin()]:
                 ListCheck = True
                 E = copy.deepcopy(i.EndNode)
                 E.UpdateParent(CurrentNode)
                 E.UpdateOrigin(i.EndNode)
                 E.UpdateStats(CurrentG+i.weight,self.Heuristic(i.EndNode))
+                #If there is already a child node from that edge in ClosedList, nothing further is done.
                 for j in ClosedList:
                     if E.EqualCoordsEqualParent(j):
                         ListCheck = False
+                #If there is already a child node from that edge in OpenList, the node in OpenList is updated to be either its old g value, or the g value obtained currently, whichever is less.
+                #This ensures the node in question will always exemplify the fastest path to a given edge.
                 if j in OpenList:
                     if E.EqualCoordsEqualParent(j):
                         ListCheck = False
                         i.UpdateStats(min(j.g,E.g),j.h)
+                #If the given node from the edge is in neither OpenList or ClosedList, the node is appended to OpenList.
                 if ListCheck == True:
                     OpenList.append(E)
                     
                     #print(CurrentG)
                     #print(CurrentNode.coords,E.coords,E.g)
+        #Once the number of unique paths to the destination or the fastest paths number of unique paths is found, whichever is less, these paths stored in ParentLists are converted to NavigationPaths and appended to self.paths.
+        #Before this, self.paths is set to no paths, so that the unique paths in Navigate() do not stack.
         self.paths = []
         for i in ParentLists:
             l = []
@@ -201,6 +219,7 @@ class NavigationGraph:
 
     def ChangeDestination(self,Destination):
         self.destination = Destination
+        #Once the destination changes, the paths in self.paths are no longer applicable, so all NavigationPaths in self.paths are deleted.
         self.paths = []
 
     def GetPaths(self):
@@ -211,7 +230,8 @@ class NavigationGraph:
         for i in range(NumInstructions):
             instruction = Instructions[0]
             #TBA: Actually work with instructions once API is completed
-            
+
+
 NG = NavigationGraph([0.0,2.0],[0.0,-1.0])
 NG.BuildGraph()
 NG.Navigate(3)
