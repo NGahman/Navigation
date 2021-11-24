@@ -375,3 +375,12 @@ class NavigationGraph:
             #TBA: Actually work with instructions once API is completed
 
 
+NG = NavigationGraph([-47.91, -15.76],[-52.33, 4.95])
+#print(NG.destination)
+NG.BuildGraph()
+#print(NG.graph.getNode([-47.91, -15.76]))
+#print(NG.graph.getNode([-52.33, 4.95]))
+NG.Navigate(5)
+for i in NG.paths:
+    print(i.GetInstructions())
+    print(i.GetPathLength())
